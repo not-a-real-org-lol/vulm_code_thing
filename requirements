@@ -1,2 +1,5 @@
-opencv-python
-pymysql
+opencv-python-headless>=4.9.0.80; platform_system != "Linux" or platform_machine != "x86_64"
+pymysql>=1.1.1
+requests>=2.32.3
+urllib3>=2.8.0
+python-dotenv>=1.0.1
