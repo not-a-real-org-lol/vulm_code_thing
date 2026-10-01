@@ -87,7 +87,7 @@ jobs:
           path: /tmp
 
       - name: Run Trivy Security Gate
-        uses: aquasecurity/trivy-action@0.29.0
+        uses: aquasecurity/trivy-action@v0.29.0
         with:
           input: /tmp/image.tar
           format: 'table'
@@ -98,7 +98,7 @@ jobs:
 
       - name: Generate Trivy SARIF report
         if: always()
-        uses: aquasecurity/trivy-action@0.29.0
+        uses: aquasecurity/trivy-action@v0.29.0
         with:
           input: /tmp/image.tar
           format: 'sarif'
@@ -124,7 +124,7 @@ jobs:
           path: /tmp
 
       - name: Install Syft
-        uses: anchore/sbom-action/download-syft@v0.18.0
+        uses: anchore/sbom-action/download-syft@v0
 
       - name: Generate CycloneDX JSON SBOM
         run: |
