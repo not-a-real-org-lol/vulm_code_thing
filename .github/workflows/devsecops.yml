@@ -87,7 +87,7 @@ jobs:
           path: /tmp
 
       - name: Run Trivy Security Gate
-        uses: aquasecurity/trivy-action@v0.29.0
+        uses: aquasecurity/trivy-action@master
         with:
           input: /tmp/image.tar
           format: 'table'
@@ -98,7 +98,7 @@ jobs:
 
       - name: Generate Trivy SARIF report
         if: always()
-        uses: aquasecurity/trivy-action@v0.29.0
+        uses: aquasecurity/trivy-action@master
         with:
           input: /tmp/image.tar
           format: 'sarif'
