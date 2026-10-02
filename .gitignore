@@ -2,3 +2,15 @@
 env
 .venv
 venv
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+cosign.key
+cosign.pub
+*.key
+*.pem
+sbom.cdx.json
+*.sarif
+*.tar
+*.tar.gz

@@ -1,0 +1,224 @@
+name: DevSecOps CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+    tags: [ "v*.*.*" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+  security-events: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build:
+    name: Build Container Image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image and export tar archive
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          load: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          outputs: type=docker,dest=/tmp/image.tar
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Upload image tar artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: container-image
+          path: /tmp/image.tar
+          retention-days: 1
+
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies and pytest
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest
+          pip install -r requirements.txt
+
+      - name: Execute unit tests
+        env:
+          STORAGE_DIR: "/tmp/scan_test"
+        run: |
+          pytest tests/ -v --tb=short
+
+  security-scan:
+    name: Vulnerability Security Gate (Trivy)
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download image tar artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: container-image
+          path: /tmp
+
+      - name: Run Trivy Security Gate
+        uses: aquasecurity/trivy-action@master
+        with:
+          input: /tmp/image.tar
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: false
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Generate Trivy SARIF report
+        if: always()
+        uses: aquasecurity/trivy-action@master
+        with:
+          input: /tmp/image.tar
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload SARIF report to GitHub Security
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+        continue-on-error: true
+
+  sbom:
+    name: Generate SBOM (CycloneDX)
+    runs-on: ubuntu-latest
+    needs: security-scan
+    steps:
+      - name: Download image tar artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: container-image
+          path: /tmp
+
+      - name: Install Syft
+        uses: anchore/sbom-action/download-syft@v0
+
+      - name: Generate CycloneDX JSON SBOM
+        run: |
+          syft /tmp/image.tar -o cyclonedx-json=sbom.cdx.json
+
+      - name: Upload SBOM as CI Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom.cdx.json
+          path: sbom.cdx.json
+          retention-days: 14
+
+  publish:
+    name: Publish to Container Registry
+    runs-on: ubuntu-latest
+    needs: [security-scan, sbom]
+    if: github.event_name != 'pull_request'
+    outputs:
+      image_tag: ${{ steps.push.outputs.image_tag }}
+      image_digest: ${{ steps.push.outputs.image_digest }}
+    steps:
+      - name: Download image tar artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: container-image
+          path: /tmp
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Load image to local Docker daemon
+        run: |
+          docker load -i /tmp/image.tar
+
+      - name: Tag and push container image
+        id: push
+        run: |
+          TARGET_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+          TAG_SHA="${TARGET_IMAGE}:${{ github.sha }}"
+          TAG_LATEST="${TARGET_IMAGE}:latest"
+          
+          docker tag "${TAG_SHA}" "${TAG_LATEST}"
+          docker push "${TAG_SHA}"
+          docker push "${TAG_LATEST}"
+          
+          DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "${TAG_SHA}")
+          echo "image_tag=${TAG_SHA}" >> $GITHUB_OUTPUT
+          echo "image_digest=${DIGEST}" >> $GITHUB_OUTPUT
+
+  sign:
+    name: Cryptographic Sign & Attest (Cosign)
+    runs-on: ubuntu-latest
+    needs: publish
+    if: github.event_name != 'pull_request'
+    steps:
+      - name: Install Cosign CLI
+        uses: sigstore/cosign-installer@v3.8.1
+
+      - name: Download SBOM Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: sbom.cdx.json
+          path: ./
+
+      - name: Log in to GHCR for Cosign
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Sign Container Image (Keyless OIDC)
+        env:
+          TAG: ${{ needs.publish.outputs.image_tag }}
+          COSIGN_EXPERIMENTAL: "1"
+        run: |
+          cosign sign --yes "${TAG}"
+
+      - name: Attest CycloneDX SBOM to Container Image
+        env:
+          TAG: ${{ needs.publish.outputs.image_tag }}
+          COSIGN_EXPERIMENTAL: "1"
+        run: |
+          cosign attest --yes --predicate sbom.cdx.json --type cyclonedx "${TAG}"
+
+      - name: Verify Cosign Signature
+        env:
+          TAG: ${{ needs.publish.outputs.image_tag }}
+        run: |
+          cosign verify \
+            --certificate-identity-regexp ".*github.com/${{ github.repository }}.*" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            "${TAG}"
