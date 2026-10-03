@@ -127,8 +127,13 @@ jobs:
         uses: anchore/sbom-action/download-syft@v0
 
       - name: Generate CycloneDX JSON SBOM
+        env:
+          SYFT_FILE_METADATA_SELECTION: "none"
         run: |
-          syft /tmp/image.tar -o cyclonedx-json=sbom.cdx.json
+          syft /tmp/image.tar \
+            --source-name "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}" \
+            --source-version "${{ github.sha }}" \
+            -o cyclonedx-json=sbom.cdx.json
 
       - name: Upload SBOM as CI Artifact
         uses: actions/upload-artifact@v4

@@ -1,0 +1,5 @@
+# Syft configuration to keep SBOM concise and container-focused
+file:
+  metadata:
+    # Disable indexing raw files; keep packages, OS, and container metadata only
+    selection: "none"
