@@ -17,12 +17,18 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: scan itself
-        uses: ossf/scorecard-action@v2.4.0
+      - uses: actions/setup-go@v5
         with:
-          results_file: results.json
-          results_format: json
-          publish_results: false
+          go-version: stable
+
+      - name: Scorecard
+        env:
+          GITHUB_AUTH_TOKEN: ${{ secrets.SCORECARD_TOKEN }}
+        run: |
+          go install github.com/ossf/scorecard/v5@latest
+          "$(go env GOPATH)/bin/scorecard" \
+            --repo=github.com/${{ github.repository }} \
+            --format=json > results.json
   
       - uses: actions/upload-artifact@v4
         with:
