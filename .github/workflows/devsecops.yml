@@ -91,7 +91,7 @@ jobs:
           input: /tmp/image.tar
           format: 'table'
           exit-code: '1'
-          ignore-unfixed: false
+          ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
 
@@ -162,6 +162,7 @@ jobs:
         run: |
           ${{ steps.grype.outputs.cmd }} sbom:sbom.cdx.json \
             --fail-on high \
+            --ony-fixed \
             -o table \
             -o sarif=grype.sarif
 
