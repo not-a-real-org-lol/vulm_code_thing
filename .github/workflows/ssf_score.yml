@@ -1,0 +1,39 @@
+name: openSSF scoreboard
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions: read-all
+
+jobs:
+  score:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Scorecard
+        env:
+          GITHUB_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          go install github.com/ossf/scorecard/v5@latest
+          "$(go env GOPATH)/bin/scorecard" \
+            --repo=github.com/${{ github.repository }} \
+            --format=json \
+            --output=results.json
+          test -s results.json || { echo "results.json is empty"; exit 1; }
+  
+      - uses: actions/upload-artifact@v4
+        with:
+          name: scorecard-results
+          path: results.json
+          retention-days: 14
