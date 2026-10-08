@@ -162,7 +162,7 @@ jobs:
         run: |
           ${{ steps.grype.outputs.cmd }} sbom:sbom.cdx.json \
             --fail-on high \
-            --ony-fixed \
+            --only-fixed \
             -o table \
             -o sarif=grype.sarif
 
