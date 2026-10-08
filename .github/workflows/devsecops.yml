@@ -142,10 +142,42 @@ jobs:
           path: sbom.cdx.json
           retention-days: 14
 
+  grype:
+    name: Scan it with grype
+    runs-on: ubuntu-latest
+    needs: sbom
+    permissions:
+      contents: read
+    steps:
+      - name: Download SBOM
+        uses: actions/download-artifact@v4
+        with:
+          name: sbom.cdx.json
+          path: .
+
+      - name: Install Grype
+        id: grype
+        uses: anchore/scan-action/download-grype@v6
+
+      - name: Scan
+        run: |
+          ${{ steps.grype.outputs.cmd }} sbom:sbom.cdx.json \
+            --fail-on high \
+            -o table \
+            -o sarif=grype.sarif
+
+      - name: Upload report as CI Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: grype.sarif
+          path: grype.sarif
+          retention-days: 14
+
   publish:
     name: Publish to Container Registry
     runs-on: ubuntu-latest
-    needs: [security-scan, sbom]
+    needs: [security-scan, sbom, grype]
     if: github.event_name != 'pull_request'
     outputs:
       image_tag: ${{ steps.push.outputs.image_tag }}
