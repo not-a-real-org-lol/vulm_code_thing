@@ -1,0 +1,31 @@
+name: openSSF scoreboard
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions: read-all
+
+jobs:
+  score:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: scan itself
+        uses: ossf/scorecard-action@v2.4.0
+        with:
+          results_file: results.json
+          results_format: json
+          publish_results: false
+  
+      - uses: actions/upload-artifact@v4
+        with:
+          name: scorecard-results
+          path: results.json
+          retention-days: 14
