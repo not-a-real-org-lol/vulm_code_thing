@@ -14,3 +14,4 @@ sbom.cdx.json
 *.sarif
 *.tar
 *.tar.gz
+qa_audit_artifacts/
