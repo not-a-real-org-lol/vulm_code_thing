@@ -79,6 +79,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Run Trivy Repo & Misconfiguration Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
+          ignore-unfixed: true
+
       - name: Download image tar artifact
         uses: actions/download-artifact@v4
         with:
@@ -109,6 +118,7 @@ jobs:
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: 'trivy-results.sarif'
+          category: 'trivy-image-scan'
         continue-on-error: true
 
   sbom:
@@ -142,17 +152,26 @@ jobs:
           retention-days: 14
 
   grype:
-    name: Scan it with grype
+    name: Scan it with grype & trivy sbom
     runs-on: ubuntu-latest
     needs: sbom
     permissions:
       contents: read
+      security-events: write
     steps:
       - name: Download SBOM
         uses: actions/download-artifact@v4
         with:
           name: sbom.cdx.json
           path: .
+
+      - name: Scan SBOM with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'sbom'
+          scan-ref: 'sbom.cdx.json'
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
 
       - name: Install Grype
         id: grype
@@ -173,6 +192,14 @@ jobs:
           name: grype.sarif
           path: grype.sarif
           retention-days: 14
+
+      - name: Upload Grype SARIF report to GitHub Security
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'grype.sarif'
+          category: 'grype-sbom-scan'
+        continue-on-error: true
 
   publish:
     name: Publish to Container Registry
