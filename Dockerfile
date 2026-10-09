@@ -14,12 +14,8 @@ RUN apk upgrade --no-cache && \
 COPY requirements.txt ./
 
 RUN python3 -m venv /opt/venv && \
-    /opt/venv/bin/pip install --no-cache-dir --upgrade pip "setuptools>=78.1.1" wheel && \
-    grep -v -i -E "^opencv" requirements.txt > /tmp/requirements-pip.txt || true && \
-    if [ -s /tmp/requirements-pip.txt ]; then \
-        /opt/venv/bin/pip install --no-cache-dir -r /tmp/requirements-pip.txt; \
-    fi && \
-    /opt/venv/bin/pip uninstall -y setuptools wheel pip
+    /opt/venv/bin/pip install --no-cache-dir --require-hashes -r requirements.txt && \
+    /opt/venv/bin/pip uninstall -y pip
 
    FROM alpine:3.24@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6 AS runner
 
