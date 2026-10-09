@@ -2,7 +2,8 @@
 
 WORKDIR /build
 
-RUN apk add --no-cache \
+RUN apk upgrade --no-cache && \
+    apk add --no-cache \
     python3 \
     py3-pip \
     py3-wheel \
@@ -25,7 +26,8 @@ RUN python3 -m venv /opt/venv && \
 LABEL org.opencontainers.image.title="RTSP Scanner Service" \
       org.opencontainers.image.licenses="MIT"
 
-RUN apk add --no-cache \
+RUN apk upgrade --no-cache && \
+    apk add --no-cache \
     python3 \
     py3-opencv \
     ca-certificates \
