@@ -1,10 +1,4 @@
 #!/usr/bin/env bash
-# ==============================================================================
-# QA Security Audit Automation Script
-# Project: RTSP Scanner Service (vulm_code_thing)
-# Role: QA Engineer / Security Tester
-# Requirements: Trivy, Syft, Grype, Cosign, Python 3
-# ==============================================================================
 
 set -euo pipefail
 
@@ -17,13 +11,11 @@ echo "=========================================================="
 echo "Artifacts directory: ${REPORT_DIR}"
 echo ""
 
-# 1. Run Unit & Security Tests
 echo "[1/6] Running Unit and Security Test Suite..."
 python3 -m unittest discover tests -v
 echo "==> Tests passed successfully."
 echo ""
 
-# 2. Trivy Config Scan (Dockerfile & IaC)
 echo "[2/6] Running Trivy Configuration & Misconfiguration Audit..."
 if command -v trivy &>/dev/null; then
     trivy config Dockerfile \
@@ -35,7 +27,6 @@ else
 fi
 echo ""
 
-# 3. Trivy Filesystem Scan (Code, Dependencies & Secrets)
 echo "[3/6] Running Trivy Filesystem Audit (Vulnerabilities, Secrets, Misconfigs)..."
 if command -v trivy &>/dev/null; then
     trivy fs . \
@@ -46,7 +37,6 @@ if command -v trivy &>/dev/null; then
 fi
 echo ""
 
-# 4. Syft SBOM Generation (CycloneDX JSON)
 echo "[4/6] Generating CycloneDX SBOM via Syft..."
 SBOM_FILE="${REPORT_DIR}/sbom.cdx.json"
 if command -v syft &>/dev/null; then
@@ -57,7 +47,6 @@ else
 fi
 echo ""
 
-# 5. Grype vs Trivy SBOM Scanning (Cross-Scanner Audit)
 echo "[5/6] Cross-Scanning SBOM with Grype and Trivy..."
 if [[ -f "${SBOM_FILE}" ]]; then
     if command -v grype &>/dev/null; then
@@ -78,7 +67,6 @@ if [[ -f "${SBOM_FILE}" ]]; then
 fi
 echo ""
 
-# 6. Cosign Signature Verification Checklist
 echo "[6/6] Cosign Signature Verification Guidance..."
 cat << 'EOF'
 To verify the published GHCR container image and attested CycloneDX SBOM:
