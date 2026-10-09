@@ -1,4 +1,4 @@
-FROM alpine:3.24 AS builder
+   FROM alpine:3.24@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6 AS builder
 
 WORKDIR /build
 
@@ -20,7 +20,7 @@ RUN python3 -m venv /opt/venv && \
     fi && \
     /opt/venv/bin/pip uninstall -y setuptools wheel pip
 
-FROM alpine:3.20 AS runner
+   FROM alpine:3.24@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6 AS runner
 
 LABEL org.opencontainers.image.title="RTSP Scanner Service" \
       org.opencontainers.image.licenses="MIT"
@@ -43,7 +43,7 @@ WORKDIR /app
 COPY --from=builder --chown=appuser:appgroup /opt/venv /opt/venv
 
 ENV PATH="/opt/venv/bin:$PATH" \
-    PYTHONPATH="/opt/venv/lib/python3.12/site-packages:/usr/lib/python3.12/site-packages" \
+    PYTHONPATH="/opt/venv/lib/python3.14/site-packages:/usr/lib/python3.14/site-packages" \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     STORAGE_DIR="/var/www/html/scan"
