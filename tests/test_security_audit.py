@@ -89,7 +89,6 @@ class TestSecurityAuditSuite(unittest.TestCase):
 
     def test_sbom_structure_compliance(self):
         """QA verification of CycloneDX SBOM specification compliance."""
-        # Generate or load CycloneDX SBOM and verify format
         sbom_sample = {
             "bomFormat": "CycloneDX",
             "specVersion": "1.5",
@@ -109,7 +108,6 @@ class TestSecurityAuditSuite(unittest.TestCase):
         self.assertTrue(sbom_sample["components"][0]["purl"].startswith("pkg:"))
 
     def test_cosign_oidc_issuer_regex_validation(self):
-        """QA verification of Cosign OIDC certificate and identity regular expressions."""
         expected_issuer = "https://token.actions.githubusercontent.com"
         expected_identity_pattern = r"^https://github\.com/not-a-real-org-lol/vulm_code_thing/\.github/workflows/.*"
         
