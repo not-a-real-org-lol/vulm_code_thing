@@ -29,8 +29,8 @@ jobs:
           "$(go env GOPATH)/bin/scorecard" \
             --repo=github.com/${{ github.repository }} \
             --format=json \
-            --output=results.json
-          test -s results.json || { echo "results.json is empty"; exit 1; }
+            --output=openSSF_scoreboard.json
+          test -s openSSF_scoreboard.json || { echo "results.json is empty"; exit 1; }
 
       - name: Upload openSSF sarif scan to security
         if: always()
@@ -39,5 +39,5 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: scorecard-results
-          path: results.json
+          path: openSSF_scoreboard.json
           retention-days: 14
