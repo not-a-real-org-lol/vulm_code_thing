@@ -12,28 +12,30 @@ permissions: read-all
 jobs:
   score:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
 
-      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+      - name: Scorecard Analysis
+        uses: ossf/scorecard-action@f49aabe0b5af0936a0987cfb85d86b75731b0186 # v2.4.1
         with:
-          go-version: stable
+          results_file: results.sarif
+          results_format: sarif
+          publish_results: false
 
-      - name: Scorecard
-        env:
-          GITHUB_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          go install github.com/ossf/scorecard/v5@c395761df6afe1a69e476bc60a013a94bcbc153f
-          "$(go env GOPATH)/bin/scorecard" \
-            --repo=github.com/${{ github.repository }} \
-            --format=json \
-            --output=results.json
-          test -s results.json || { echo "results.json is empty"; exit 1; }
+      - name: Upload SARIF report to GitHub Security
+        uses: github/codeql-action/upload-sarif@9f759ee644a3e7c15c1390abf49868036c00067b # v3
+        with:
+          sarif_file: results.sarif
+          category: 'openssf-scorecard'
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: scorecard-results
-          path: results.json
+          path: results.sarif
           retention-days: 14
