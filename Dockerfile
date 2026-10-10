@@ -1,8 +1,9 @@
-FROM alpine:3.24 AS builder
+   FROM alpine:3.24@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6 AS builder
 
 WORKDIR /build
 
-RUN apk add --no-cache \
+RUN apk upgrade --no-cache && \
+    apk add --no-cache \
     python3 \
     py3-pip \
     py3-wheel \
@@ -13,19 +14,16 @@ RUN apk add --no-cache \
 COPY requirements.txt ./
 
 RUN python3 -m venv /opt/venv && \
-    /opt/venv/bin/pip install --no-cache-dir --upgrade pip "setuptools>=78.1.1" wheel && \
-    grep -v -i -E "^opencv" requirements.txt > /tmp/requirements-pip.txt || true && \
-    if [ -s /tmp/requirements-pip.txt ]; then \
-        /opt/venv/bin/pip install --no-cache-dir -r /tmp/requirements-pip.txt; \
-    fi && \
-    /opt/venv/bin/pip uninstall -y setuptools wheel pip
+    /opt/venv/bin/pip install --no-cache-dir --require-hashes -r requirements.txt && \
+    /opt/venv/bin/pip uninstall -y pip
 
-FROM alpine:3.20 AS runner
+   FROM alpine:3.24@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6 AS runner
 
 LABEL org.opencontainers.image.title="RTSP Scanner Service" \
       org.opencontainers.image.licenses="MIT"
 
-RUN apk add --no-cache \
+RUN apk upgrade --no-cache && \
+    apk add --no-cache \
     python3 \
     py3-opencv \
     ca-certificates \
@@ -43,7 +41,7 @@ WORKDIR /app
 COPY --from=builder --chown=appuser:appgroup /opt/venv /opt/venv
 
 ENV PATH="/opt/venv/bin:$PATH" \
-    PYTHONPATH="/opt/venv/lib/python3.12/site-packages:/usr/lib/python3.12/site-packages" \
+    PYTHONPATH="/opt/venv/lib/python3.14/site-packages:/usr/lib/python3.14/site-packages" \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     STORAGE_DIR="/var/www/html/scan"
