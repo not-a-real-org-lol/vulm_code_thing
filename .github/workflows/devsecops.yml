@@ -7,11 +7,7 @@ on:
     branches: [ "main" ]
   workflow_dispatch:
 
-permissions:
-  contents: read
-  packages: write
-  id-token: write
-  security-events: write
+permissions: read-all
 
 env:
   REGISTRY: ghcr.io
@@ -72,6 +68,10 @@ jobs:
     name: Vulnerability Security Gate (Trivy)
     runs-on: ubuntu-latest
     needs: test
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -201,6 +201,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: [security-scan, sbom, grype]
     if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
+      packages: write
     outputs:
       image_tag: ${{ steps.push.outputs.image_tag }}
       image_digest: ${{ steps.push.outputs.image_digest }}
@@ -242,6 +245,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: publish
     if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
     steps:
       - name: Install Cosign CLI
         uses: sigstore/cosign-installer@d7d6bc7722e3daa8354c50bcb52f4837da5e9b6a # v3.8.1
